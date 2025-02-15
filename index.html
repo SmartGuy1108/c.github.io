@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Synthesizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Voice Synthesizer</h1>
+    <input type="file" id="audioInput" accept="audio/*">
+    <button onclick="synthesizeVoice()">Synthesize Voice</button>
+    <br>
+    <audio id="synthesizedAudio" controls></audio>
+    <script>
+        function synthesizeVoice() {
+            const audioInput = document.getElementById('audioInput').files[0];
+            if (!audioInput) {
+                alert('Please select an audio file');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createBufferSource();
+                audioContext.decodeAudioData(event.target.result, function(buffer) {
+                    source.buffer = buffer;
+                    source.connect(audioContext.destination);
+                    
+                    const speechSynthesis = window.speechSynthesis;
+                    const utterance = new SpeechSynthesisUtterance("This is a synthesized voice.");
+                    utterance.voice = speechSynthesis.getVoices()[0];
+                    speechSynthesis.speak(utterance);
+
+                    utterance.onend = function() {
+                        const synthesizedAudioElement = document.getElementById('synthesizedAudio');
+                        synthesizedAudioElement.src = event.target.result;
+                        synthesizedAudioElement.play();
+                    };
+                });
+            };
+            reader.readAsArrayBuffer(audioInput);
+        }
+    </script>
+</body>
+</html>
