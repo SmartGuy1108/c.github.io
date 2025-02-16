@@ -69,21 +69,14 @@
             width: 100%;
             max-width: 300px;
         }
-        .icon {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 50px;
-        }
     </style>
 </head>
 <body>
-    <img src="https://img.icons8.com/clouds/100/boeing-747.png" alt="Boeing 747" class="icon">
     <h1>Voice Synthesizer</h1>
-    <button class="button" onclick="startRecording()">Start Recording</button>
-    <button class="button" onclick="stopRecording()">Stop Recording</button>
+    <button class="button" id="startRecording">Start Recording</button>
+    <button class="button" id="stopRecording">Stop Recording</button>
     <input type="file" id="audioInput" accept="audio/*" class="file-input">
-    <button class="button" onclick="synthesizeVoice()">Synthesize Voice</button>
+    <button class="button" id="synthesizeVoice">Synthesize Voice</button>
     <audio id="recordedAudio" controls></audio>
     <a id="downloadButton" href="#" download="synthesized_audio.wav" class="button">Download Synthesized Audio</a>
     <script>
@@ -91,6 +84,10 @@
         let audioChunks = [];
         let audioBlob;
         let uploadedAudioBlob;
+
+        document.getElementById('startRecording').addEventListener('click', startRecording);
+        document.getElementById('stopRecording').addEventListener('click', stopRecording);
+        document.getElementById('synthesizeVoice').addEventListener('click', synthesizeVoice);
 
         function startRecording() {
             navigator.mediaDevices.getUserMedia({ audio: true })
