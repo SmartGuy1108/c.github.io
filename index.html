@@ -15,7 +15,7 @@
             background-color: #121212;
             color: #ffffff;
         }
-        button {
+        button, input[type="file"], #downloadButton {
             margin: 10px 0;
             background-color: #1e1e1e;
             color: #ffffff;
@@ -23,20 +23,12 @@
             padding: 10px 20px;
             cursor: pointer;
         }
-        button:hover {
+        button:hover, input[type="file"]:hover, #downloadButton:hover {
             background-color: #333333;
         }
         #downloadButton {
             display: none;
-            background-color: #1e1e1e;
-            color: #ffffff;
-            border: none;
-            padding: 10px 20px;
-            cursor: pointer;
             text-decoration: none;
-        }
-        #downloadButton:hover {
-            background-color: #333333;
         }
     </style>
 </head>
@@ -44,6 +36,7 @@
     <h1>Voice Synthesizer</h1>
     <button onclick="startRecording()">Start Recording</button>
     <button onclick="stopRecording()">Stop Recording</button>
+    <input type="file" id="audioInput" accept="audio/*">
     <button onclick="synthesizeVoice()">Synthesize Voice</button>
     <br>
     <audio id="recordedAudio" controls></audio>
@@ -53,6 +46,7 @@
         let mediaRecorder;
         let audioChunks = [];
         let audioBlob;
+        let uploadedAudioBlob;
 
         function startRecording() {
             navigator.mediaDevices.getUserMedia({ audio: true })
@@ -83,11 +77,19 @@
         }
 
         async function synthesizeVoice() {
-            if (!audioBlob) {
-                alert('Please record an audio first');
-                return;
+            const fileInput = document.getElementById('audioInput');
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                uploadedAudioBlob = file;
+                processAudio(uploadedAudioBlob);
+            } else if (audioBlob) {
+                processAudio(audioBlob);
+            } else {
+                alert('Please record an audio or upload a file first');
             }
+        }
 
+        async function processAudio(audioBlob) {
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             const reader = new FileReader();
 
@@ -97,41 +99,47 @@
                     const source = audioContext.createBufferSource();
                     source.buffer = buffer;
                     source.connect(audioContext.destination);
+                    source.start(0);
 
-                    const speechSynthesis = window.speechSynthesis;
                     const utterance = new SpeechSynthesisUtterance("This is a synthesized voice.");
-                    utterance.voice = speechSynthesis.getVoices()[0];
-                    speechSynthesis.speak(utterance);
+                    utterance.voice = window.speechSynthesis.getVoices()[0];
+                    
+                    // Convert speech synthesis output to audio buffer
+                    const synthAudioBuffer = await new Promise((resolve) => {
+                        utterance.onend = function() {
+                            const synthSource = audioContext.createBufferSource();
+                            synthSource.buffer = buffer;
+                            synthSource.connect(audioContext.destination);
+                            synthSource.start(0);
+                            resolve(synthSource.buffer);
+                        };
+                        window.speechSynthesis.speak(utterance);
+                    });
 
-                    utterance.onend = async function() {
-                        const synthesizedBuffer = await createSynthesizedAudioBuffer(buffer, audioContext);
-                        const synthesizedBlob = new Blob([synthesizedBuffer], { type: 'audio/wav' });
-                        
-                        const synthesizedAudioElement = document.getElementById('recordedAudio');
-                        synthesizedAudioElement.src = URL.createObjectURL(synthesizedBlob);
-                        
-                        const downloadButton = document.getElementById('downloadButton');
-                        downloadButton.href = URL.createObjectURL(synthesizedBlob);
-                        downloadButton.style.display = 'block';
-                    };
+                    // Combine original and synthesized audio
+                    const combinedBuffer = audioContext.createBuffer(
+                        1,
+                        buffer.length + synthAudioBuffer.length,
+                        buffer.sampleRate
+                    );
+                    const combinedData = combinedBuffer.getChannelData(0);
+                    combinedData.set(buffer.getChannelData(0), 0);
+                    combinedData.set(synthAudioBuffer.getChannelData(0), buffer.length);
+
+                    const synthesizedBlob = new Blob([combinedBuffer.getChannelData(0)], { type: 'audio/wav' });
+
+                    const synthesizedAudioElement = document.getElementById('recordedAudio');
+                    synthesizedAudioElement.src = URL.createObjectURL(synthesizedBlob);
+
+                    const downloadButton = document.getElementById('downloadButton');
+                    downloadButton.href = URL.createObjectURL(synthesizedBlob);
+                    downloadButton.style.display = 'block';
                 } catch (error) {
                     console.error('Error decoding audio data:', error);
                 }
             };
 
             reader.readAsArrayBuffer(audioBlob);
-        }
-
-        async function createSynthesizedAudioBuffer(buffer, audioContext) {
-            const synthesizedBuffer = audioContext.createBuffer(1, buffer.length, buffer.sampleRate);
-            const synthesizedData = synthesizedBuffer.getChannelData(0);
-            const inputData = buffer.getChannelData(0);
-
-            for (let i = 0; i < inputData.length; i++) {
-                synthesizedData[i] = inputData[i];
-            }
-
-            return synthesizedData.buffer;
         }
     </script>
 </body>
