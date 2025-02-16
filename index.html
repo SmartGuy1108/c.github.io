@@ -136,6 +136,7 @@
 
                     const utterance = new SpeechSynthesisUtterance("This is a synthesized voice.");
                     utterance.voice = window.speechSynthesis.getVoices()[0];
+                    utterance.pitch = 0.1;  // Make the voice deeper
 
                     // Convert speech synthesis output to audio buffer
                     const synthAudioBuffer = await synthesizeSpeechToBuffer(utterance, audioContext);
