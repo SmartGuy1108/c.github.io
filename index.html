@@ -1,161 +1,57 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Synthesizer</title>
+    <title>Online Vocaloid</title>
     <style>
         body {
-            font-family: 'Roboto', sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            background-color: #000000; /* Black background */
-            color: #ffffff;
-            margin: 0;
-        }
-        h1 {
-            margin-bottom: 20px;
-            font-size: 2.5em;
+            font-family: Arial, sans-serif;
             text-align: center;
+            margin-top: 50px;
         }
-        .button {
-            margin: 10px 0;
-            background-color: #1e1e1e;
-            color: #ffffff;
-            border: none;
+        input[type="text"] {
+            width: 300px;
+            padding: 10px;
+            margin: 10px;
+        }
+        button {
             padding: 10px 20px;
-            cursor: pointer;
-            border-radius: 5px;
-            font-size: 1.1em;
-            transition: background-color 0.3s ease;
-        }
-        .button:hover {
-            background-color: #333333;
-        }
-        .file-input {
-            margin: 10px 0;
-            background-color: #1e1e1e;
-            color: #ffffff;
+            background-color: #4CAF50;
+            color: white;
             border: none;
-            padding: 10px 20px;
             cursor: pointer;
-            border-radius: 5px;
-            font-size: 1.1em;
-            transition: background-color 0.3s ease;
         }
-        .file-input:hover {
-            background-color: #333333;
-        }
-        #downloadButton {
-            display: none;
-            background-color: #1e1e1e;
-            color: #ffffff;
-            border: none;
-            padding: 10px 20px;
-            cursor: pointer;
-            border-radius: 5px;
-            font-size: 1.1em;
-            text-decoration: none;
-            transition: background-color 0.3s ease;
-        }
-        #downloadButton:hover {
-            background-color: #333333;
+        button:hover {
+            background-color: #45a049;
         }
         audio {
             margin-top: 20px;
-            width: 100%;
-            max-width: 300px;
         }
     </style>
 </head>
 <body>
-    <h1>Voice Synthesizer</h1>
-    <button class="button" id="startButton">Start Recording</button>
-    <button class="button" id="stopButton" style="display: none;">Stop Recording</button>
-    <input type="file" class="file-input" id="uploadInput" accept="audio/*">
-    <audio id="recordedAudio" controls></audio>
-    <button class="button" id="synthButton" style="display: none;">Synthesize Audio</button>
-    <a id="downloadButton" href="#" download="synthesized_audio.wav" class="button">Download Synthesized Audio</a>
+    <h1>Online Vocaloid</h1>
+    <input type="text" id="text" placeholder="Enter text to synthesize">
+    <button onclick="synthesizeVoice()">Synthesize</button>
+    <audio id="audio" controls></audio>
+    
     <script>
-        let mediaRecorder;
-        let audioChunks = [];
-        let uploadedAudioBlob;
+        function synthesizeVoice() {
+            const text = document.getElementById('text').value;
+            const audioElement = document.getElementById('audio');
 
-        document.getElementById('startButton').addEventListener('click', startRecording);
-        document.getElementById('stopButton').addEventListener('click', stopRecording);
-        document.getElementById('uploadInput').addEventListener('change', handleFileUpload);
-        document.getElementById('synthButton').addEventListener('click', synthesizeUploadedAudio);
-
-        function startRecording() {
-            navigator.mediaDevices.getUserMedia({ audio: true })
-                .then(stream => {
-                    mediaRecorder = new MediaRecorder(stream);
-                    mediaRecorder.start();
-                    document.getElementById('startButton').style.display = 'none';
-                    document.getElementById('stopButton').style.display = 'block';
-
-                    mediaRecorder.ondataavailable = event => {
-                        audioChunks.push(event.data);
-                    };
-                })
-                .catch(error => console.error('Error accessing microphone:', error));
-        }
-
-        function stopRecording() {
-            if (mediaRecorder) {
-                mediaRecorder.stop();
-                document.getElementById('startButton').style.display = 'block';
-                document.getElementById('stopButton').style.display = 'none';
-
-                mediaRecorder.onstop = async () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                    audioChunks = [];
-
-                    const recordedAudioElement = document.getElementById('recordedAudio');
-                    const audioURL = URL.createObjectURL(audioBlob);
-                    recordedAudioElement.src = audioURL;
-
-                    uploadedAudioBlob = audioBlob; // Assign the recorded audioBlob for synthesis
-                    document.getElementById('synthButton').style.display = 'block';
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                const voices = window.speechSynthesis.getVoices();
+                utterance.voice = voices[0]; // You can select a different voice if available
+                utterance.onend = () => {
+                    audioElement.src = URL.createObjectURL(new Blob([utterance], { type: 'audio/wav' }));
                 };
+                window.speechSynthesis.speak(utterance);
+            } else {
+                alert('Your browser does not support speech synthesis.');
             }
-        }
-
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
-            if (file) {
-                uploadedAudioBlob = file; // Assign the uploaded file for synthesis
-                const recordedAudioElement = document.getElementById('recordedAudio');
-                recordedAudioElement.src = URL.createObjectURL(file);
-                document.getElementById('synthButton').style.display = 'block';
-            }
-        }
-
-        async function synthesizeUploadedAudio() {
-            if (uploadedAudioBlob) {
-                const filteredAudioBlob = await filterSpeech(uploadedAudioBlob);
-                processAudio(filteredAudioBlob);
-            }
-        }
-
-        async function filterSpeech(audioBlob) {
-            // The existing filterSpeech function code
-        }
-
-        async function processAudio(audioBlob) {
-            // The existing processAudio function code
-        }
-
-        async function synthesizeSpeechToBuffer(utterance, audioContext) {
-            // The existing synthesizeSpeechToBuffer function code
-        }
-
-        function bufferToWaveBlob(buffer) {
-            // The existing bufferToWaveBlob function code
         }
     </script>
 </body>
 </html>
+
