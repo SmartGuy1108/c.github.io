@@ -78,7 +78,7 @@
     </style>
 </head>
 <body>
-    <img src="https://img.icons8.com/clouds/100/000000/boeing-747.png" alt="Boeing 747" class="icon">
+    <img src="https://img.icons8.com/clouds/100/boeing-747.png" alt="Boeing 747" class="icon">
     <h1>Voice Synthesizer</h1>
     <button class="button" onclick="startRecording()">Start Recording</button>
     <button class="button" onclick="stopRecording()">Stop Recording</button>
@@ -243,4 +243,11 @@
                 pos += 2;
             }
 
-            function setUint
+            function setUint32(data) {
+                view.setUint32(pos, data, true);
+                pos += 4;
+            }
+        }
+    </script>
+</body>
+</html>
