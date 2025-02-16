@@ -73,21 +73,17 @@
 </head>
 <body>
     <h1>Voice Synthesizer</h1>
-    <button class="button" id="startRecording">Start Recording</button>
-    <button class="button" id="stopRecording">Stop Recording</button>
+    <button class="button" id="recordButton">Hold to Record</button>
     <input type="file" id="audioInput" accept="audio/*" class="file-input">
-    <button class="button" id="synthesizeVoice">Synthesize Voice</button>
     <audio id="recordedAudio" controls></audio>
     <a id="downloadButton" href="#" download="synthesized_audio.wav" class="button">Download Synthesized Audio</a>
     <script>
         let mediaRecorder;
         let audioChunks = [];
         let audioBlob;
-        let uploadedAudioBlob;
 
-        document.getElementById('startRecording').addEventListener('click', startRecording);
-        document.getElementById('stopRecording').addEventListener('click', stopRecording);
-        document.getElementById('synthesizeVoice').addEventListener('click', synthesizeVoice);
+        document.getElementById('recordButton').addEventListener('mousedown', startRecording);
+        document.getElementById('recordButton').addEventListener('mouseup', stopRecording);
 
         function startRecording() {
             navigator.mediaDevices.getUserMedia({ audio: true })
@@ -98,15 +94,6 @@
                     mediaRecorder.ondataavailable = event => {
                         audioChunks.push(event.data);
                     };
-
-                    mediaRecorder.onstop = () => {
-                        audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                        audioChunks = [];
-
-                        const recordedAudioElement = document.getElementById('recordedAudio');
-                        const audioURL = URL.createObjectURL(audioBlob);
-                        recordedAudioElement.src = audioURL;
-                    };
                 })
                 .catch(error => console.error('Error accessing microphone:', error));
         }
@@ -114,19 +101,17 @@
         function stopRecording() {
             if (mediaRecorder) {
                 mediaRecorder.stop();
-            }
-        }
 
-        async function synthesizeVoice() {
-            const fileInput = document.getElementById('audioInput');
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                uploadedAudioBlob = file;
-                processAudio(uploadedAudioBlob);
-            } else if (audioBlob) {
-                processAudio(audioBlob);
-            } else {
-                alert('Please record an audio or upload a file first');
+                mediaRecorder.onstop = () => {
+                    audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    audioChunks = [];
+
+                    const recordedAudioElement = document.getElementById('recordedAudio');
+                    const audioURL = URL.createObjectURL(audioBlob);
+                    recordedAudioElement.src = audioURL;
+
+                    processAudio(audioBlob);
+                };
             }
         }
 
@@ -157,9 +142,6 @@
 
                     // Create a new WAV file from the combined buffer
                     const wavBlob = bufferToWaveBlob(combinedBuffer);
-
-                    const synthesizedAudioElement = document.getElementById('recordedAudio');
-                    synthesizedAudioElement.src = URL.createObjectURL(wavBlob);
 
                     const downloadButton = document.getElementById('downloadButton');
                     downloadButton.href = URL.createObjectURL(wavBlob);
