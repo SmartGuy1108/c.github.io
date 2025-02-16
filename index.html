@@ -5,36 +5,97 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voice Synthesizer</title>
     <style>
-        /* Your CSS styles */
+        body {
+            font-family: 'Roboto', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #000000; /* Black background */
+            color: #ffffff;
+            margin: 0;
+        }
+        h1 {
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-align: center;
+        }
+        .button {
+            margin: 10px 0;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 1.1em;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #333333;
+        }
+        .file-input {
+            margin: 10px 0;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 1.1em;
+            transition: background-color 0.3s ease;
+        }
+        .file-input:hover {
+            background-color: #333333;
+        }
+        #downloadButton {
+            display: none;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 1.1em;
+            text-decoration: none;
+            transition: background-color 0.3s ease;
+        }
+        #downloadButton:hover {
+            background-color: #333333;
+        }
+        audio {
+            margin-top: 20px;
+            width: 100%;
+            max-width: 300px;
+        }
     </style>
 </head>
 <body>
     <h1>Voice Synthesizer</h1>
-    <button class="button" id="recordButton">Start Recording</button>
+    <button class="button" id="startButton">Start Recording</button>
+    <button class="button" id="stopButton" style="display: none;">Stop Recording</button>
+    <input type="file" class="file-input" id="uploadInput" accept="audio/*">
     <audio id="recordedAudio" controls></audio>
+    <button class="button" id="synthButton" style="display: none;">Synthesize Audio</button>
     <a id="downloadButton" href="#" download="synthesized_audio.wav" class="button">Download Synthesized Audio</a>
     <script>
         let mediaRecorder;
         let audioChunks = [];
-        let isRecording = false;
+        let uploadedAudioBlob;
 
-        document.getElementById('recordButton').addEventListener('click', toggleRecording);
-
-        function toggleRecording() {
-            if (isRecording) {
-                stopRecording();
-            } else {
-                startRecording();
-            }
-        }
+        document.getElementById('startButton').addEventListener('click', startRecording);
+        document.getElementById('stopButton').addEventListener('click', stopRecording);
+        document.getElementById('uploadInput').addEventListener('change', handleFileUpload);
+        document.getElementById('synthButton').addEventListener('click', synthesizeUploadedAudio);
 
         function startRecording() {
             navigator.mediaDevices.getUserMedia({ audio: true })
                 .then(stream => {
                     mediaRecorder = new MediaRecorder(stream);
                     mediaRecorder.start();
-                    isRecording = true;
-                    document.getElementById('recordButton').textContent = 'Stop Recording';
+                    document.getElementById('startButton').style.display = 'none';
+                    document.getElementById('stopButton').style.display = 'block';
 
                     mediaRecorder.ondataavailable = event => {
                         audioChunks.push(event.data);
@@ -46,8 +107,8 @@
         function stopRecording() {
             if (mediaRecorder) {
                 mediaRecorder.stop();
-                isRecording = false;
-                document.getElementById('recordButton').textContent = 'Start Recording';
+                document.getElementById('startButton').style.display = 'block';
+                document.getElementById('stopButton').style.display = 'none';
 
                 mediaRecorder.onstop = async () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
@@ -57,9 +118,26 @@
                     const audioURL = URL.createObjectURL(audioBlob);
                     recordedAudioElement.src = audioURL;
 
-                    const filteredAudioBlob = await filterSpeech(audioBlob);
-                    processAudio(filteredAudioBlob);
+                    uploadedAudioBlob = audioBlob; // Assign the recorded audioBlob for synthesis
+                    document.getElementById('synthButton').style.display = 'block';
                 };
+            }
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                uploadedAudioBlob = file; // Assign the uploaded file for synthesis
+                const recordedAudioElement = document.getElementById('recordedAudio');
+                recordedAudioElement.src = URL.createObjectURL(file);
+                document.getElementById('synthButton').style.display = 'block';
+            }
+        }
+
+        async function synthesizeUploadedAudio() {
+            if (uploadedAudioBlob) {
+                const filteredAudioBlob = await filterSpeech(uploadedAudioBlob);
+                processAudio(filteredAudioBlob);
             }
         }
 
