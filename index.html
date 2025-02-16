@@ -53,7 +53,7 @@
         let mediaRecorder;
         let audioChunks = [];
         let audioBlob;
-        
+
         function startRecording() {
             navigator.mediaDevices.getUserMedia({ audio: true })
                 .then(stream => {
@@ -82,7 +82,7 @@
             }
         }
 
-        function synthesizeVoice() {
+        async function synthesizeVoice() {
             if (!audioBlob) {
                 alert('Please record an audio first');
                 return;
@@ -91,8 +91,9 @@
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             const reader = new FileReader();
 
-            reader.onload = function(event) {
-                audioContext.decodeAudioData(event.target.result, function(buffer) {
+            reader.onload = async function(event) {
+                try {
+                    const buffer = await audioContext.decodeAudioData(event.target.result);
                     const source = audioContext.createBufferSource();
                     source.buffer = buffer;
                     source.connect(audioContext.destination);
@@ -107,14 +108,17 @@
                         synthesizedAudioElement.src = URL.createObjectURL(audioBlob);
                         
                         const downloadButton = document.getElementById('downloadButton');
-                        downloadButton.href = URL.createObjectURL(audioBlob);
+                        const synthesizedBlob = new Blob([event.target.result], { type: 'audio/wav' });
+                        downloadButton.href = URL.createObjectURL(synthesizedBlob);
                         downloadButton.style.display = 'block';
                     };
-                });
+                } catch (error) {
+                    console.error('Error decoding audio data:', error);
+                }
             };
+
             reader.readAsArrayBuffer(audioBlob);
         }
     </script>
 </body>
 </html>
-
