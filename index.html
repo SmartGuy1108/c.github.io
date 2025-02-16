@@ -12,12 +12,31 @@
             align-items: center;
             justify-content: center;
             height: 100vh;
+            background-color: #121212;
+            color: #ffffff;
         }
         button {
             margin: 10px 0;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #333333;
         }
         #downloadButton {
             display: none;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        #downloadButton:hover {
+            background-color: #333333;
         }
     </style>
 </head>
@@ -34,7 +53,6 @@
         let mediaRecorder;
         let audioChunks = [];
         let audioBlob;
-        let synthesizedBlob;
         
         function startRecording() {
             navigator.mediaDevices.getUserMedia({ audio: true })
@@ -85,29 +103,12 @@
                     speechSynthesis.speak(utterance);
 
                     utterance.onend = function() {
-                        const synthesizedAudioContext = new (window.AudioContext || window.webkitAudioContext)();
-                        const synthesizedBuffer = audioContext.createBuffer(1, buffer.length, buffer.sampleRate);
-                        const synthesizedData = synthesizedBuffer.getChannelData(0);
-                        const inputData = buffer.getChannelData(0);
-
-                        for (let i = 0; i < inputData.length; i++) {
-                            synthesizedData[i] = inputData[i];
-                        }
-
-                        synthesizedAudioContext.decodeAudioData(event.target.result, function(synthBuffer) {
-                            const synthSource = synthesizedAudioContext.createBufferSource();
-                            synthSource.buffer = synthBuffer;
-                            synthSource.connect(synthesizedAudioContext.destination);
-                            
-                            const synthesizedAudioElement = document.getElementById('recordedAudio');
-                            synthSource.start(0);
-                            synthesizedAudioElement.src = URL.createObjectURL(audioBlob);
-                            
-                            const downloadButton = document.getElementById('downloadButton');
-                            synthesizedBlob = new Blob([event.target.result], { type: 'audio/wav' });
-                            downloadButton.href = URL.createObjectURL(synthesizedBlob);
-                            downloadButton.style.display = 'block';
-                        });
+                        const synthesizedAudioElement = document.getElementById('recordedAudio');
+                        synthesizedAudioElement.src = URL.createObjectURL(audioBlob);
+                        
+                        const downloadButton = document.getElementById('downloadButton');
+                        downloadButton.href = URL.createObjectURL(audioBlob);
+                        downloadButton.style.display = 'block';
                     };
                 });
             };
@@ -116,3 +117,4 @@
     </script>
 </body>
 </html>
+
