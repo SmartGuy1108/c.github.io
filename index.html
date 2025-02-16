@@ -82,8 +82,8 @@
         let audioChunks = [];
         let audioBlob;
 
-        document.getElementById('recordButton').addEventListener('mousedown', startRecording);
-        document.getElementById('recordButton').addEventListener('mouseup', stopRecording);
+        document.getElementById('recordButton').addEventListener('pointerdown', startRecording);
+        document.getElementById('recordButton').addEventListener('pointerup', stopRecording);
 
         function startRecording() {
             navigator.mediaDevices.getUserMedia({ audio: true })
