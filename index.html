@@ -6,7 +6,7 @@
     <title>Voice Synthesizer</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Roboto', sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -14,34 +14,71 @@
             height: 100vh;
             background-color: #121212;
             color: #ffffff;
+            margin: 0;
         }
-        button, input[type="file"], #downloadButton {
+        h1 {
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-align: center;
+        }
+        .button {
             margin: 10px 0;
             background-color: #1e1e1e;
             color: #ffffff;
             border: none;
             padding: 10px 20px;
             cursor: pointer;
+            border-radius: 5px;
+            font-size: 1.1em;
+            transition: background-color 0.3s ease;
         }
-        button:hover, input[type="file"]:hover, #downloadButton:hover {
+        .button:hover {
+            background-color: #333333;
+        }
+        .file-input {
+            margin: 10px 0;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 1.1em;
+            transition: background-color 0.3s ease;
+        }
+        .file-input:hover {
             background-color: #333333;
         }
         #downloadButton {
             display: none;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 1.1em;
             text-decoration: none;
+            transition: background-color 0.3s ease;
+        }
+        #downloadButton:hover {
+            background-color: #333333;
+        }
+        audio {
+            margin-top: 20px;
+            width: 100%;
+            max-width: 300px;
         }
     </style>
 </head>
 <body>
     <h1>Voice Synthesizer</h1>
-    <button onclick="startRecording()">Start Recording</button>
-    <button onclick="stopRecording()">Stop Recording</button>
-    <input type="file" id="audioInput" accept="audio/*">
-    <button onclick="synthesizeVoice()">Synthesize Voice</button>
-    <br>
+    <button class="button" onclick="startRecording()">Start Recording</button>
+    <button class="button" onclick="stopRecording()">Stop Recording</button>
+    <input type="file" id="audioInput" accept="audio/*" class="file-input">
+    <button class="button" onclick="synthesizeVoice()">Synthesize Voice</button>
     <audio id="recordedAudio" controls></audio>
-    <br>
-    <a id="downloadButton" href="#" download="synthesized_audio.wav">Download Synthesized Audio</a>
+    <a id="downloadButton" href="#" download="synthesized_audio.wav" class="button">Download Synthesized Audio</a>
     <script>
         let mediaRecorder;
         let audioChunks = [];
@@ -103,20 +140,11 @@
 
                     const utterance = new SpeechSynthesisUtterance("This is a synthesized voice.");
                     utterance.voice = window.speechSynthesis.getVoices()[0];
-                    
-                    // Convert speech synthesis output to audio buffer
-                    const synthAudioBuffer = await new Promise((resolve) => {
-                        utterance.onend = function() {
-                            const synthSource = audioContext.createBufferSource();
-                            synthSource.buffer = buffer;
-                            synthSource.connect(audioContext.destination);
-                            synthSource.start(0);
-                            resolve(synthSource.buffer);
-                        };
-                        window.speechSynthesis.speak(utterance);
-                    });
 
-                    // Combine original and synthesized audio
+                    // Convert speech synthesis output to audio buffer
+                    const synthAudioBuffer = await synthesizeSpeechToBuffer(utterance, audioContext);
+
+                    // Combine original and synthesized audio data
                     const combinedBuffer = audioContext.createBuffer(
                         1,
                         buffer.length + synthAudioBuffer.length,
@@ -126,13 +154,14 @@
                     combinedData.set(buffer.getChannelData(0), 0);
                     combinedData.set(synthAudioBuffer.getChannelData(0), buffer.length);
 
-                    const synthesizedBlob = new Blob([combinedBuffer.getChannelData(0)], { type: 'audio/wav' });
+                    // Create a new WAV file from the combined buffer
+                    const wavBlob = await bufferToWaveBlob(combinedBuffer, audioContext);
 
                     const synthesizedAudioElement = document.getElementById('recordedAudio');
-                    synthesizedAudioElement.src = URL.createObjectURL(synthesizedBlob);
+                    synthesizedAudioElement.src = URL.createObjectURL(wavBlob);
 
                     const downloadButton = document.getElementById('downloadButton');
-                    downloadButton.href = URL.createObjectURL(synthesizedBlob);
+                    downloadButton.href = URL.createObjectURL(wavBlob);
                     downloadButton.style.display = 'block';
                 } catch (error) {
                     console.error('Error decoding audio data:', error);
@@ -140,6 +169,26 @@
             };
 
             reader.readAsArrayBuffer(audioBlob);
+        }
+
+        async function synthesizeSpeechToBuffer(utterance, audioContext) {
+            return new Promise((resolve) => {
+                utterance.onend = function() {
+                    const synthBuffer = audioContext.createBuffer(1, utterance.length, audioContext.sampleRate);
+                    const synthData = synthBuffer.getChannelData(0);
+                    resolve(synthBuffer);
+                };
+                window.speechSynthesis.speak(utterance);
+            });
+        }
+
+        async function bufferToWaveBlob(buffer, audioContext) {
+            const wavData = audioContext.createWaveFile(buffer, {
+                sampleRate: buffer.sampleRate,
+                channels: buffer.numberOfChannels,
+                bitDepth: 16
+            });
+            return new Blob([wavData], { type: 'audio/wav' });
         }
     </script>
 </body>
