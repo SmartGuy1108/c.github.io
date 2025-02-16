@@ -5,48 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voice Synthesizer</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            background-color: #121212;
-            color: #ffffff;
-        }
-        button, input[type="file"], #downloadButton {
-            margin: 10px 0;
-            background-color: #1e1e1e;
-            color: #ffffff;
-            border: none;
-            padding: 10px 20px;
-            cursor: pointer;
-        }
-        button:hover, input[type="file"]:hover, #downloadButton:hover {
-            background-color: #333333;
-        }
-        #downloadButton {
-            display: none;
-            text-decoration: none;
-        }
+        /* Your CSS styles */
     </style>
 </head>
 <body>
     <h1>Voice Synthesizer</h1>
-    <button onclick="startRecording()">Start Recording</button>
-    <button onclick="stopRecording()">Stop Recording</button>
-    <input type="file" id="audioInput" accept="audio/*">
-    <button onclick="synthesizeVoice()">Synthesize Voice</button>
-    <br>
+    <button class="button" id="recordButton">Hold to Record</button>
     <audio id="recordedAudio" controls></audio>
-    <br>
-    <a id="downloadButton" href="#" download="synthesized_audio.wav">Download Synthesized Audio</a>
+    <a id="downloadButton" href="#" download="synthesized_audio.wav" class="button">Download Synthesized Audio</a>
     <script>
         let mediaRecorder;
         let audioChunks = [];
         let audioBlob;
-        let uploadedAudioBlob;
+
+        document.getElementById('recordButton').addEventListener('pointerdown', startRecording);
+        document.getElementById('recordButton').addEventListener('pointerup', stopRecording);
 
         function startRecording() {
             navigator.mediaDevices.getUserMedia({ audio: true })
@@ -57,15 +30,6 @@
                     mediaRecorder.ondataavailable = event => {
                         audioChunks.push(event.data);
                     };
-
-                    mediaRecorder.onstop = () => {
-                        audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                        audioChunks = [];
-
-                        const recordedAudioElement = document.getElementById('recordedAudio');
-                        const audioURL = URL.createObjectURL(audioBlob);
-                        recordedAudioElement.src = audioURL;
-                    };
                 })
                 .catch(error => console.error('Error accessing microphone:', error));
         }
@@ -73,20 +37,73 @@
         function stopRecording() {
             if (mediaRecorder) {
                 mediaRecorder.stop();
+
+                mediaRecorder.onstop = async () => {
+                    audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    audioChunks = [];
+
+                    const recordedAudioElement = document.getElementById('recordedAudio');
+                    const audioURL = URL.createObjectURL(audioBlob);
+                    recordedAudioElement.src = audioURL;
+
+                    const filteredAudioBlob = await filterSpeech(audioBlob);
+                    processAudio(filteredAudioBlob);
+                };
             }
         }
 
-        async function synthesizeVoice() {
-            const fileInput = document.getElementById('audioInput');
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                uploadedAudioBlob = file;
-                processAudio(uploadedAudioBlob);
-            } else if (audioBlob) {
-                processAudio(audioBlob);
-            } else {
-                alert('Please record an audio or upload a file first');
-            }
+        async function filterSpeech(audioBlob) {
+            return new Promise((resolve) => {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const reader = new FileReader();
+
+                reader.onload = async function(event) {
+                    const audioBuffer = await audioContext.decodeAudioData(event.target.result);
+
+                    const speechRecognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                    speechRecognition.lang = 'en-US';
+                    speechRecognition.interimResults = false;
+                    speechRecognition.maxAlternatives = 1;
+
+                    const source = audioContext.createBufferSource();
+                    source.buffer = audioBuffer;
+                    const processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+                    source.connect(processor);
+                    processor.connect(audioContext.destination);
+
+                    let finalTranscript = '';
+                    speechRecognition.onresult = (event) => {
+                        for (const result of event.results) {
+                            finalTranscript += result[0].transcript + ' ';
+                        }
+                    };
+
+                    processor.onaudioprocess = () => {
+                        speechRecognition.start();
+                    };
+
+                    source.onended = () => {
+                        speechRecognition.stop();
+                        processor.disconnect();
+                        source.disconnect();
+
+                        const synthSpeech = new SpeechSynthesisUtterance(finalTranscript.trim());
+                        synthSpeech.voice = window.speechSynthesis.getVoices()[0];
+                        synthSpeech.pitch = 0.1;
+
+                        window.speechSynthesis.speak(synthSpeech);
+
+                        synthSpeech.onend = () => {
+                            resolve(audioBlob);
+                        };
+                    };
+
+                    source.start();
+                };
+
+                reader.readAsArrayBuffer(audioBlob);
+            });
         }
 
         async function processAudio(audioBlob) {
@@ -96,35 +113,26 @@
             reader.onload = async function(event) {
                 try {
                     const buffer = await audioContext.decodeAudioData(event.target.result);
-                    const source = audioContext.createBufferSource();
-                    source.buffer = buffer;
-                    source.connect(audioContext.destination);
-
-                    // Create an empty buffer to hold the combined audio
-                    const combinedBuffer = audioContext.createBuffer(
-                        1,
-                        buffer.length,
-                        buffer.sampleRate
-                    );
-
-                    // Copy the original audio data into the combined buffer
-                    combinedBuffer.getChannelData(0).set(buffer.getChannelData(0));
 
                     const utterance = new SpeechSynthesisUtterance("This is a synthesized voice.");
                     utterance.voice = window.speechSynthesis.getVoices()[0];
+                    utterance.pitch = 0.1;  // Make the voice deeper
 
-                    // Synthesize speech and add it to the combined buffer
+                    // Convert speech synthesis output to audio buffer
                     const synthAudioBuffer = await synthesizeSpeechToBuffer(utterance, audioContext);
 
                     // Combine original and synthesized audio data
+                    const combinedBuffer = audioContext.createBuffer(
+                        1,
+                        buffer.length + synthAudioBuffer.length,
+                        buffer.sampleRate
+                    );
                     const combinedData = combinedBuffer.getChannelData(0);
+                    combinedData.set(buffer.getChannelData(0), 0);
                     combinedData.set(synthAudioBuffer.getChannelData(0), buffer.length);
 
                     // Create a new WAV file from the combined buffer
-                    const wavBlob = await bufferToWaveBlob(combinedBuffer, audioContext);
-
-                    const synthesizedAudioElement = document.getElementById('recordedAudio');
-                    synthesizedAudioElement.src = URL.createObjectURL(wavBlob);
+                    const wavBlob = bufferToWaveBlob(combinedBuffer);
 
                     const downloadButton = document.getElementById('downloadButton');
                     downloadButton.href = URL.createObjectURL(wavBlob);
@@ -139,22 +147,76 @@
 
         async function synthesizeSpeechToBuffer(utterance, audioContext) {
             return new Promise((resolve) => {
+                const synthSource = audioContext.createBufferSource();
+                const synthProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+                const synthData = [];
+                synthProcessor.onaudioprocess = (event) => {
+                    synthData.push(...event.inputBuffer.getChannelData(0));
+                };
+                synthProcessor.connect(audioContext.destination);
+
                 utterance.onend = function() {
-                    const synthBuffer = audioContext.createBuffer(1, utterance.length, audioContext.sampleRate);
-                    const synthData = synthBuffer.getChannelData(0);
+                    synthProcessor.disconnect();
+                    const synthBuffer = audioContext.createBuffer(1, synthData.length, audioContext.sampleRate);
+                    synthBuffer.copyToChannel(new Float32Array(synthData), 0);
                     resolve(synthBuffer);
                 };
                 window.speechSynthesis.speak(utterance);
             });
         }
 
-        async function bufferToWaveBlob(buffer, audioContext) {
-            const wavData = audioContext.createWaveFile(buffer, {
-                sampleRate: buffer.sampleRate,
-                channels: buffer.numberOfChannels,
-                bitDepth: 16
-            });
-            return new Blob([wavData], { type: 'audio/wav' });
+        function bufferToWaveBlob(buffer) {
+            const numOfChan = buffer.numberOfChannels,
+                length = buffer.length * numOfChan * 2 + 44,
+                bufferArray = new ArrayBuffer(length),
+                view = new DataView(bufferArray),
+                channels = [],
+                i,
+                sample,
+                offset = 0,
+                pos = 0;
+
+            setUint32(0x46464952); // "RIFF"
+            setUint32(length - 8); // file length - 8
+            setUint32(0x45564157); // "WAVE"
+
+            setUint32(0x20746d66); // "fmt " chunk
+            setUint32(16); // length = 16
+            setUint16(1); // PCM (uncompressed)
+            setUint16(numOfChan);
+            setUint32(buffer.sampleRate);
+            setUint32(buffer.sampleRate * 2 * numOfChan);
+            setUint16(numOfChan * 2);
+            setUint16(16); // bits per sample
+
+            setUint32(0x61746164); // "data" - chunk
+            setUint32(length - pos - 4); // chunk length
+
+            for (i = 0; i < buffer.numberOfChannels; i++) {
+                channels.push(buffer.getChannelData(i));
+            }
+
+            while (pos < length) {
+                for (i = 0; i < numOfChan; i++) {
+                    sample = Math.max(-1, Math.min(1, channels[i][offset])); // clamp
+                    sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0; // scale to 16-bit signed int
+                    view.setInt16(pos, sample, true); // write 16-bit sample
+                    pos += 2;
+                }
+                offset++;
+            }
+
+            function setUint16(data) {
+                view.setUint16(pos, data, true);
+                pos += 2;
+            }
+
+            function setUint32(data) {
+                view.setUint32(pos, data, true);
+                pos += 4;
+            }
+
+            return new Blob([bufferArray], { type: 'audio/wav' });
         }
     </script>
 </body>
