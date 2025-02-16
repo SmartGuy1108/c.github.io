@@ -16,44 +16,89 @@
         input[type="file"] {
             margin: 10px 0;
         }
+        button {
+            margin: 10px 0;
+        }
+        #downloadButton {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <h1>Voice Synthesizer</h1>
-    <input type="file" id="audioInput" accept="audio/*">
+    <button onclick="startRecording()">Start Recording</button>
+    <button onclick="stopRecording()">Stop Recording</button>
     <button onclick="synthesizeVoice()">Synthesize Voice</button>
     <br>
-    <audio id="synthesizedAudio" controls></audio>
+    <audio id="recordedAudio" controls></audio>
+    <br>
+    <a id="downloadButton" href="#" download="synthesized_audio.wav">Download Synthesized Audio</a>
     <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let audioBlob;
+        
+        function startRecording() {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.start();
+
+                    mediaRecorder.ondataavailable = event => {
+                        audioChunks.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                        audioChunks = [];
+
+                        const recordedAudioElement = document.getElementById('recordedAudio');
+                        const audioURL = URL.createObjectURL(audioBlob);
+                        recordedAudioElement.src = audioURL;
+                    };
+                })
+                .catch(error => console.error('Error accessing microphone:', error));
+        }
+
+        function stopRecording() {
+            if (mediaRecorder) {
+                mediaRecorder.stop();
+            }
+        }
+
         function synthesizeVoice() {
-            const audioInput = document.getElementById('audioInput').files[0];
-            if (!audioInput) {
-                alert('Please select an audio file');
+            if (!audioBlob) {
+                alert('Please record an audio first');
                 return;
             }
 
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
             const reader = new FileReader();
+
             reader.onload = function(event) {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const source = audioContext.createBufferSource();
                 audioContext.decodeAudioData(event.target.result, function(buffer) {
+                    const source = audioContext.createBufferSource();
                     source.buffer = buffer;
                     source.connect(audioContext.destination);
-                    
+
                     const speechSynthesis = window.speechSynthesis;
                     const utterance = new SpeechSynthesisUtterance("This is a synthesized voice.");
                     utterance.voice = speechSynthesis.getVoices()[0];
                     speechSynthesis.speak(utterance);
 
                     utterance.onend = function() {
-                        const synthesizedAudioElement = document.getElementById('synthesizedAudio');
+                        const synthesizedAudioElement = document.getElementById('recordedAudio');
                         synthesizedAudioElement.src = event.target.result;
-                        synthesizedAudioElement.play();
+                        
+                        const downloadButton = document.getElementById('downloadButton');
+                        downloadButton.href = event.target.result;
+                        downloadButton.style.display = 'block';
                     };
                 });
             };
-            reader.readAsArrayBuffer(audioInput);
+            reader.readAsArrayBuffer(audioBlob);
         }
     </script>
 </body>
 </html>
+
