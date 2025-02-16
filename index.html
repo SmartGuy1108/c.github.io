@@ -133,10 +133,6 @@
             reader.onload = async function(event) {
                 try {
                     const buffer = await audioContext.decodeAudioData(event.target.result);
-                    const source = audioContext.createBufferSource();
-                    source.buffer = buffer;
-                    source.connect(audioContext.destination);
-                    source.start(0);
 
                     const utterance = new SpeechSynthesisUtterance("This is a synthesized voice.");
                     utterance.voice = window.speechSynthesis.getVoices()[0];
@@ -173,9 +169,18 @@
 
         async function synthesizeSpeechToBuffer(utterance, audioContext) {
             return new Promise((resolve) => {
+                const synthSource = audioContext.createBufferSource();
+                const synthProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+                const synthData = [];
+                synthProcessor.onaudioprocess = (event) => {
+                    synthData.push(...event.inputBuffer.getChannelData(0));
+                };
+                synthProcessor.connect(audioContext.destination);
+
                 utterance.onend = function() {
-                    const synthBuffer = audioContext.createBuffer(1, utterance.length, audioContext.sampleRate);
-                    const synthData = synthBuffer.getChannelData(0);
+                    synthProcessor.disconnect();
+                    const synthBuffer = audioContext.createBuffer(1, synthData.length, audioContext.sampleRate);
+                    synthBuffer.copyToChannel(new Float32Array(synthData), 0);
                     resolve(synthBuffer);
                 };
                 window.speechSynthesis.speak(utterance);
