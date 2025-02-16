@@ -7,6 +7,8 @@
             font-family: Arial, sans-serif;
             text-align: center;
             margin-top: 50px;
+            background-color: black; /* Changed background color to black */
+            color: white; /* Changed text color to white for better contrast */
         }
         input[type="text"] {
             width: 300px;
@@ -15,6 +17,7 @@
         }
         button {
             padding: 10px 20px;
+            margin: 5px;
             background-color: #4CAF50;
             color: white;
             border: none;
@@ -31,27 +34,58 @@
 <body>
     <h1>Online Vocaloid</h1>
     <input type="text" id="text" placeholder="Enter text to synthesize">
+    <br>
+    <label for="voiceSelect">Choose a voice:</label>
+    <select id="voiceSelect">
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+    </select>
+    <br>
     <button onclick="synthesizeVoice()">Synthesize</button>
+    <button onclick="autotuneVoice()">Autotune</button>
     <audio id="audio" controls></audio>
+    <br>
+    <button onclick="downloadAudio()">Download</button>
     
     <script>
+        let synthesizedBlob = null;
+
         function synthesizeVoice() {
             const text = document.getElementById('text').value;
             const audioElement = document.getElementById('audio');
+            const selectedVoice = document.getElementById('voiceSelect').value;
 
             if ('speechSynthesis' in window) {
                 const utterance = new SpeechSynthesisUtterance(text);
                 const voices = window.speechSynthesis.getVoices();
-                utterance.voice = voices[0]; // You can select a different voice if available
-                utterance.onend = () => {
-                    audioElement.src = URL.createObjectURL(new Blob([utterance], { type: 'audio/wav' }));
-                };
+                utterance.voice = selectedVoice === 'male' ? voices.find(v => v.name.includes('Male')) : voices.find(v => v.name.includes('Female'));
+                
                 window.speechSynthesis.speak(utterance);
+                
+                utterance.onend = () => {
+                    synthesizedBlob = new Blob([utterance], { type: 'audio/wav' });
+                    audioElement.src = URL.createObjectURL(synthesizedBlob);
+                };
             } else {
                 alert('Your browser does not support speech synthesis.');
+            }
+        }
+
+        function autotuneVoice() {
+            alert('Autotune feature is not implemented yet.');
+            // Implement your autotune logic here
+        }
+
+        function downloadAudio() {
+            if (synthesizedBlob) {
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(synthesizedBlob);
+                link.download = 'synthesized_voice.wav';
+                link.click();
+            } else {
+                alert('No audio to download. Please synthesize a voice first.');
             }
         }
     </script>
 </body>
 </html>
-
