@@ -103,12 +103,14 @@
                     utterance.voice = speechSynthesis.getVoices()[0];
                     speechSynthesis.speak(utterance);
 
-                    utterance.onend = function() {
+                    utterance.onend = async function() {
+                        const synthesizedBuffer = await createSynthesizedAudioBuffer(buffer, audioContext);
+                        const synthesizedBlob = new Blob([synthesizedBuffer], { type: 'audio/wav' });
+                        
                         const synthesizedAudioElement = document.getElementById('recordedAudio');
-                        synthesizedAudioElement.src = URL.createObjectURL(audioBlob);
+                        synthesizedAudioElement.src = URL.createObjectURL(synthesizedBlob);
                         
                         const downloadButton = document.getElementById('downloadButton');
-                        const synthesizedBlob = new Blob([event.target.result], { type: 'audio/wav' });
                         downloadButton.href = URL.createObjectURL(synthesizedBlob);
                         downloadButton.style.display = 'block';
                     };
@@ -118,6 +120,18 @@
             };
 
             reader.readAsArrayBuffer(audioBlob);
+        }
+
+        async function createSynthesizedAudioBuffer(buffer, audioContext) {
+            const synthesizedBuffer = audioContext.createBuffer(1, buffer.length, buffer.sampleRate);
+            const synthesizedData = synthesizedBuffer.getChannelData(0);
+            const inputData = buffer.getChannelData(0);
+
+            for (let i = 0; i < inputData.length; i++) {
+                synthesizedData[i] = inputData[i];
+            }
+
+            return synthesizedData.buffer;
         }
     </script>
 </body>
