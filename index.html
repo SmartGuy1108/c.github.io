@@ -7,8 +7,8 @@
             font-family: Arial, sans-serif;
             text-align: center;
             margin-top: 50px;
-            background-color: black; /* Changed background color to black */
-            color: white; /* Changed text color to white for better contrast */
+            background-color: black;
+            color: white;
         }
         input[type="text"] {
             width: 300px;
@@ -18,13 +18,13 @@
         button {
             padding: 10px 20px;
             margin: 5px;
-            background-color: #4CAF50;
+            background-color: #008CBA; /* Changed background color to blue */
             color: white;
             border: none;
             cursor: pointer;
         }
         button:hover {
-            background-color: #45a049;
+            background-color: #007bb5; /* Darker blue on hover */
         }
         .button-group {
             display: flex;
@@ -32,6 +32,12 @@
         }
         audio {
             margin-top: 20px;
+            display: block;
+            margin: 0 auto;
+        }
+        input[type="file"] {
+            display: block;
+            margin: 20px auto;
         }
     </style>
 </head>
@@ -41,17 +47,18 @@
     <br>
     <label for="voiceSelect">Choose a voice:</label>
     <select id="voiceSelect">
-        <option value="male">Male</option>
-        <option value="female">Female</option>
+        <option value="male">Alex</option>
+        <option value="female">Alexa</option>
     </select>
     <br>
     <div class="button-group">
         <button onclick="synthesizeVoice()">Synthesize</button>
-        <button onclick="autotuneVoice()">Autotune</button>
+        <button onclick="singVoice()">Sing</button>
     </div>
-    <audio id="audio" controls style="display: block; margin: 0 auto;"></audio>
+    <audio id="audio" controls></audio>
     <br>
     <button onclick="downloadAudio()">Download</button>
+    <input type="file" id="audioFile" accept="audio/*">
     
     <script>
         let synthesizedBlob = null;
@@ -64,11 +71,10 @@
             if ('speechSynthesis' in window) {
                 const utterance = new SpeechSynthesisUtterance(text);
                 const voices = window.speechSynthesis.getVoices();
-                utterance.voice = selectedVoice === 'male' ? voices.find(v => v.name.includes('Google US English')) : voices.find(v => v.name.includes('Google UK English Female'));
-                
-                window.speechSynthesis.speak(utterance);
-                
+                utterance.voice = selectedVoice === 'male' ? voices.find(v => v.name.includes('Alex')) : voices.find(v => v.name.includes('Alexa'));
+
                 utterance.onend = () => {
+                    window.speechSynthesis.speak(utterance);
                     synthesizedBlob = new Blob([utterance], { type: 'audio/wav' });
                     audioElement.src = URL.createObjectURL(synthesizedBlob);
                 };
@@ -77,17 +83,20 @@
             }
         }
 
-        function autotuneVoice() {
+        function singVoice() {
             const text = document.getElementById('text').value;
             const audioElement = document.getElementById('audio');
 
             if ('speechSynthesis' in window) {
-                const utterance = new SpeechSynthesisUtterance(text.split(' ').join('~')); // Add '~' to make it sing-like
+                const utterance = new SpeechSynthesisUtterance(text);
                 const voices = window.speechSynthesis.getVoices();
-                utterance.voice = voices[0]; // Use the first available voice
-                
+                utterance.voice = voices.find(v => v.name.includes('Alexa'));
+
+                utterance.pitch = 2.0; // Increase pitch to create a sing-like effect
+                utterance.rate = 1.2; // Adjust rate for a more singing-like cadence
+
                 window.speechSynthesis.speak(utterance);
-                
+
                 utterance.onend = () => {
                     synthesizedBlob = new Blob([utterance], { type: 'audio/wav' });
                     audioElement.src = URL.createObjectURL(synthesizedBlob);
@@ -107,6 +116,14 @@
                 alert('No audio to download. Please synthesize a voice first.');
             }
         }
+
+        document.getElementById('audioFile').addEventListener('change', function(event) {
+            const audioElement = document.getElementById('audio');
+            const file = event.target.files[0];
+            if (file) {
+                audioElement.src = URL.createObjectURL(file);
+            }
+        });
     </script>
 </body>
 </html>
