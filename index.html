@@ -11,6 +11,8 @@
             font-family: Arial, sans-serif;
             text-align: center;
             margin-top: 50px;
+            background-color: black;
+            color: white;
         }
         input[type="text"], input[type="range"] {
             width: 300px;
@@ -32,17 +34,14 @@
             display: flex;
             justify-content: center;
         }
-        #img-top-right {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 50px; /* Adjust size as needed */
-            height: auto;
+        .america-mode {
+            background-image: url('path/to/your/america-image.png'); /* Replace with the path to your image */
+            background-size: cover;
+            background-repeat: no-repeat;
         }
     </style>
 </head>
 <body class="dark-mode">
-    <img id="img-top-right" src="path/to/your/image.png" alt="Top Right Image">
     <input type="text" id="text" placeholder="Enter text to synthesize">
     <br>
     <div class="button-group">
@@ -160,7 +159,7 @@
                     break;
                 case 'america':
                     body.className = 'america-mode';
-                    body.style.backgroundColor = 'url(path/to/american-flag.png)';
+                    body.style.backgroundImage = 'url("path/to/your/america-image.png")';
                     body.style.color = 'white';
                     break;
                 default:
@@ -170,3 +169,4 @@
     </script>
 </body>
 </html>
+
