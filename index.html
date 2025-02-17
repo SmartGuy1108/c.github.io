@@ -26,6 +26,10 @@
         button:hover {
             background-color: #45a049;
         }
+        .button-group {
+            display: flex;
+            justify-content: center;
+        }
         audio {
             margin-top: 20px;
         }
@@ -41,9 +45,11 @@
         <option value="female">Female</option>
     </select>
     <br>
-    <button onclick="synthesizeVoice()">Synthesize</button>
-    <button onclick="autotuneVoice()">Autotune</button>
-    <audio id="audio" controls></audio>
+    <div class="button-group">
+        <button onclick="synthesizeVoice()">Synthesize</button>
+        <button onclick="autotuneVoice()">Autotune</button>
+    </div>
+    <audio id="audio" controls style="display: block; margin: 0 auto;"></audio>
     <br>
     <button onclick="downloadAudio()">Download</button>
     
@@ -58,7 +64,7 @@
             if ('speechSynthesis' in window) {
                 const utterance = new SpeechSynthesisUtterance(text);
                 const voices = window.speechSynthesis.getVoices();
-                utterance.voice = selectedVoice === 'male' ? voices.find(v => v.name.includes('Male')) : voices.find(v => v.name.includes('Female'));
+                utterance.voice = selectedVoice === 'male' ? voices.find(v => v.name.includes('Google US English')) : voices.find(v => v.name.includes('Google UK English Female'));
                 
                 window.speechSynthesis.speak(utterance);
                 
@@ -72,8 +78,23 @@
         }
 
         function autotuneVoice() {
-            alert('Autotune feature is not implemented yet.');
-            // Implement your autotune logic here
+            const text = document.getElementById('text').value;
+            const audioElement = document.getElementById('audio');
+
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text.split(' ').join('~')); // Add '~' to make it sing-like
+                const voices = window.speechSynthesis.getVoices();
+                utterance.voice = voices[0]; // Use the first available voice
+                
+                window.speechSynthesis.speak(utterance);
+                
+                utterance.onend = () => {
+                    synthesizedBlob = new Blob([utterance], { type: 'audio/wav' });
+                    audioElement.src = URL.createObjectURL(synthesizedBlob);
+                };
+            } else {
+                alert('Your browser does not support speech synthesis.');
+            }
         }
 
         function downloadAudio() {
