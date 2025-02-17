@@ -14,7 +14,7 @@
             background-color: black;
             color: white;
         }
-        input[type="text"] {
+        input[type="text"], input[type="range"] {
             width: 300px;
             padding: 10px;
             margin: 10px;
@@ -34,15 +34,6 @@
             display: flex;
             justify-content: center;
         }
-        audio {
-            margin-top: 20px;
-            display: block;
-            margin: 0 auto;
-        }
-        input[type="file"] {
-            display: block;
-            margin: 20px auto;
-        }
     </style>
 </head>
 <body>
@@ -50,32 +41,73 @@
     <br>
     <div class="button-group">
         <button onclick="synthesizeVoice()">Synthesize</button>
+        <button onclick="clearInput()">Clear</button>
+        <button onclick="saveText()">Save</button>
+        <button onclick="generateRandomSentence()">Generate Random Sentence</button>
     </div>
-    <audio id="audio" controls></audio>
+    <br>
+    <label for="rateControl">Speech Rate:</label>
+    <input type="range" id="rateControl" min="0.5" max="2" step="0.1" value="1">
+    <br>
+    <label for="volumeControl">Volume:</label>
+    <input type="range" id="volumeControl" min="0" max="1" step="0.1" value="1">
+    <br>
+    <label for="pitchControl">Voice Depth:</label>
+    <input type="range" id="pitchControl" min="0.5" max="2" step="0.1" value="1">
     <br>
     <button onclick="downloadAudio()">Download</button>
-    <input type="file" id="audioFile" accept="audio/*">
     
     <script>
         let synthesizedBlob = null;
+        const savedTexts = [];
 
         function synthesizeVoice() {
             const text = document.getElementById('text').value;
-            const audioElement = document.getElementById('audio');
+            const rate = document.getElementById('rateControl').value;
+            const volume = document.getElementById('volumeControl').value;
+            const pitch = document.getElementById('pitchControl').value;
 
             if ('speechSynthesis' in window) {
                 const utterance = new SpeechSynthesisUtterance(text);
                 const voices = window.speechSynthesis.getVoices();
                 utterance.voice = voices.find(v => v.name.includes('Alex'));
+                utterance.rate = rate;
+                utterance.volume = volume;
+                utterance.pitch = pitch;
 
                 utterance.onend = () => {
                     synthesizedBlob = new Blob([utterance], { type: 'audio/wav' });
-                    audioElement.src = URL.createObjectURL(synthesizedBlob);
                 };
                 window.speechSynthesis.speak(utterance);
             } else {
                 alert('Your browser does not support speech synthesis.');
             }
+        }
+
+        function clearInput() {
+            document.getElementById('text').value = '';
+        }
+
+        function saveText() {
+            const text = document.getElementById('text').value;
+            if (text) {
+                savedTexts.push(text);
+                alert('Text saved!');
+            } else {
+                alert('Please enter some text to save.');
+            }
+        }
+
+        function generateRandomSentence() {
+            const sentences = [
+                "The quick brown fox jumps over the lazy dog.",
+                "Hello world, this is a test sentence.",
+                "Speech synthesis is a fascinating technology.",
+                "Let's create amazing voice applications together.",
+                "This is an example of a random sentence."
+            ];
+            const randomSentence = sentences[Math.floor(Math.random() * sentences.length)];
+            document.getElementById('text').value = randomSentence;
         }
 
         function downloadAudio() {
@@ -88,14 +120,6 @@
                 alert('No audio to download. Please synthesize a voice first.');
             }
         }
-
-        document.getElementById('audioFile').addEventListener('change', function(event) {
-            const audioElement = document.getElementById('audio');
-            const file = event.target.files[0];
-            if (file) {
-                audioElement.src = URL.createObjectURL(file);
-            }
-        });
     </script>
 </body>
 </html>
