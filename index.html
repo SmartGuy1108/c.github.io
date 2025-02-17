@@ -44,6 +44,7 @@
         <button onclick="clearInput()">Clear</button>
         <button onclick="saveText()">Save</button>
         <button onclick="generateRandomSentence()">Generate Random Sentence</button>
+        <button onclick="stopSpeech()">Stop</button>
     </div>
     <br>
     <label for="rateControl">Speech Rate:</label>
@@ -79,6 +80,14 @@
                     synthesizedBlob = new Blob([utterance], { type: 'audio/wav' });
                 };
                 window.speechSynthesis.speak(utterance);
+            } else {
+                alert('Your browser does not support speech synthesis.');
+            }
+        }
+
+        function stopSpeech() {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
             } else {
                 alert('Your browser does not support speech synthesis.');
             }
